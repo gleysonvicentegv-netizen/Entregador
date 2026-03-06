@@ -8,11 +8,13 @@
 <meta name="theme-color" content="#333333">
 <link rel="apple-touch-icon" href="logo.png">
 <style>
-body { font-family: Arial,sans-serif; margin:0; padding:0; background:#f2f2f2; }
-header { background:#25D366; color:white; padding:15px; text-align:center; font-size:18px; font-weight:bold; }
+body { font-family: Arial, sans-serif; margin:0; padding:0; background:#f2f2f2; }
+header { background:#25D366; color:white; padding:15px; text-align:center; font-size:18px; font-weight:bold; display:flex; align-items:center; justify-content:center; gap:10px; }
+header img { height:40px; }
 .container { max-width:600px; margin:20px auto; }
-.section-title { font-weight:bold; margin:15px 0 5px; }
-.card { background:white; border-radius:8px; padding:12px; margin-bottom:10px; box-shadow:0 3px 10px rgba(0,0,0,0.15); }
+.section-title { font-weight:bold; margin:15px 0 5px; font-size:16px; }
+.card { background:white; border-radius:8px; padding:12px; margin-bottom:10px; box-shadow:0 3px 10px rgba(0,0,0,0.15); transition:0.2s; }
+.card:hover { transform:translateY(-2px); }
 .card .info { font-size:14px; margin:3px 0; }
 .card .buttons { margin-top:8px; display:flex; gap:8px; }
 .card button { flex:1; padding:8px; border:none; border-radius:6px; cursor:pointer; font-weight:bold; }
@@ -21,12 +23,16 @@ header { background:#25D366; color:white; padding:15px; text-align:center; font-
 .complete { background:#25D366; color:white; }
 .footer { text-align:center; font-size:14px; color:#555; margin-top:20px; }
 #pedidoAtivo { display:none; }
-input#nomeConfirm { width:100%; padding:10px; margin-top:10px; border-radius:6px; border:1px solid #ccc; }
+input#codigoConfirm { width:100%; padding:10px; margin-top:10px; border-radius:6px; border:1px solid #ccc; }
 </style>
 </head>
 <body>
 
-<header>Master Express - Entregador</header>
+<header>
+<img src="logo.png" alt="Logo">
+<span>Master Express - Entregador</span>
+</header>
+
 <div class="container">
 
   <div id="pendentesSection">
@@ -37,7 +43,7 @@ input#nomeConfirm { width:100%; padding:10px; margin-top:10px; border-radius:6px
   <div id="pedidoAtivo">
     <div class="section-title">Pedido em andamento</div>
     <div class="card" id="cardAtivo"></div>
-    <input type="text" id="nomeConfirm" placeholder="Digite o nome do cliente para encerrar">
+    <input type="text" id="codigoConfirm" placeholder="Digite o código para encerrar">
     <div class="buttons">
       <button class="cheguei" onclick="cheguei()">Cheguei</button>
       <button class="complete" onclick="encerrar()">Encerrar</button>
@@ -49,13 +55,14 @@ input#nomeConfirm { width:100%; padding:10px; margin-top:10px; border-radius:6px
 <footer class="footer">Master Express - Entregas em Macaé</footer>
 
 <script>
-// Simulação de pedidos (JSON público ou API futuramente)
+// Simulação de pedidos (pode ser um JSON público futuramente)
 let pedidos = [
-  {id:1,nomeRemetente:"Loja A",telRemetente:"22999999999",endRemetente:"Rua 1",endEntrega:"Rua 2",valor:12.5,urgente:"Não",aceito:false},
-  {id:2,nomeRemetente:"Loja B",telRemetente:"22988888888",endRemetente:"Rua 3",endEntrega:"Rua 4",valor:15.0,urgente:"Sim",aceito:false}
+  {id:1,nomeRemetente:"Loja A",telRemetente:"22999999999",endRemetente:"Rua 1",endEntrega:"Rua 2",valor:12.5,urgente:"Não",aceito:false,codigo:"1234"},
+  {id:2,nomeRemetente:"Loja B",telRemetente:"22988888888",endRemetente:"Rua 3",endEntrega:"Rua 4",valor:15.0,urgente:"Sim",aceito:false,codigo:"5678"}
 ];
 
 let pedidoAtual = null;
+let pedidosNotificados = [];
 
 // Renderiza pedidos pendentes
 function renderizarPendentes(){
@@ -103,6 +110,7 @@ function renderizarAtivo(){
     <div class="info"><strong>Entrega:</strong> ${pedidoAtual.endEntrega}</div>
     <div class="info"><strong>Valor:</strong> R$ ${pedidoAtual.valor}</div>
     <div class="info"><strong>Urgente:</strong> ${pedidoAtual.urgente}</div>
+    <div class="info"><strong>Código:</strong> ${pedidoAtual.codigo}</div>
   `;
 }
 
@@ -113,20 +121,40 @@ function cheguei(){
 
 // Encerrar pedido
 function encerrar(){
-  const nomeInput = document.getElementById('nomeConfirm').value.trim();
-  if(!nomeInput){
-    alert('Digite o nome do cliente para encerrar a entrega.');
+  const codigoInput = document.getElementById('codigoConfirm').value.trim();
+  if(!codigoInput){
+    alert('Digite o código para encerrar a entrega.');
     return;
   }
-  if(nomeInput.toLowerCase()!==pedidoAtual.nomeRemetente.toLowerCase()){
-    alert('Nome incorreto! Confirme com o nome do cliente.');
+  if(codigoInput !== pedidoAtual.codigo){
+    alert('Código incorreto! Confirme com o cliente.');
     return;
   }
   pedidoAtual=null;
-  document.getElementById('nomeConfirm').value='';
+  document.getElementById('codigoConfirm').value='';
   renderizarPendentes();
   alert('Entrega concluída! Você pode pegar o próximo pedido.');
 }
+
+// Simulação de notificação de novo pedido
+function verificarNovosPedidos(){
+  pedidos.forEach(p=>{
+    if(!pedidosNotificados.includes(p.id) && !p.aceito){
+      pedidosNotificados.push(p.id);
+      // alerta visual
+      alert('Novo pedido disponível!');
+      // alerta sonoro
+      const audio = new Audio('https://actions.google.com/sounds/v1/alarms/beep_short.ogg');
+      audio.play();
+    }
+  });
+}
+
+// Atualiza pedidos a cada 10s
+setInterval(()=>{
+  renderizarPendentes();
+  verificarNovosPedidos();
+},10000);
 
 // Inicial
 renderizarPendentes();
