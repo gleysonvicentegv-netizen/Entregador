@@ -1,0 +1,4 @@
+[
+  {"id":1,"nomeRemetente":"Loja A","telRemetente":"22999999999","endRemetente":"Rua 1","endEntrega":"Rua 2","valor":12.5,"urgente":"Não","aceito":false,"codigo":"1234"},
+  {"id":2,"nomeRemetente":"Loja B","telRemetente":"22988888888","endRemetente":"Rua 3","endEntrega":"Rua 4","valor":15.0,"urgente":"Sim","aceito":false,"codigo":"5678"}
+]
