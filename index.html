@@ -7,23 +7,29 @@
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#333333">
 <link rel="apple-touch-icon" href="logo.png">
+
+<!-- Leaflet CSS -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+
 <style>
-body { font-family: Arial, sans-serif; margin:0; padding:0; background:#f2f2f2; }
-header { background:#25D366; color:white; padding:15px; text-align:center; font-size:18px; font-weight:bold; display:flex; align-items:center; justify-content:center; gap:10px; }
-header img { height:40px; }
-.container { max-width:600px; margin:20px auto; }
-.section-title { font-weight:bold; margin:15px 0 5px; font-size:16px; }
-.card { background:white; border-radius:8px; padding:12px; margin-bottom:10px; box-shadow:0 3px 10px rgba(0,0,0,0.15); transition:0.2s; }
-.card:hover { transform:translateY(-2px); }
-.card .info { font-size:14px; margin:3px 0; }
-.card .buttons { margin-top:8px; display:flex; gap:8px; }
-.card button { flex:1; padding:8px; border:none; border-radius:6px; cursor:pointer; font-weight:bold; }
+body { margin:0; font-family: Arial, sans-serif; background:#f2f2f2; }
+header { background:#25D366; color:white; padding:15px; display:flex; align-items:center; justify-content:center; gap:10px; font-weight:bold; font-size:20px; }
+header img { height:50px; }
+.container { max-width:700px; margin:auto; }
+.tabs { display:flex; justify-content:space-around; margin:10px 0; }
+.tab-btn { flex:1; padding:10px; border:none; background:#ddd; font-size:16px; cursor:pointer; border-radius:6px; margin:0 5px; font-weight:bold; }
+.tab-btn.active { background:#25D366; color:white; }
+.section { display:none; }
+.section.active { display:block; }
+#map { height:400px; width:100%; margin-bottom:10px; border-radius:8px; }
+.card { background:white; border-radius:8px; padding:12px; margin-bottom:10px; box-shadow:0 3px 10px rgba(0,0,0,0.15); font-size:16px; }
+.card .info { margin:5px 0; }
+.card button { padding:10px; margin-top:5px; width:100%; border:none; border-radius:6px; cursor:pointer; font-weight:bold; font-size:16px; }
 .accept { background:#007bff; color:white; }
 .cheguei { background:#ffc107; color:white; }
 .complete { background:#25D366; color:white; }
-.footer { text-align:center; font-size:14px; color:#555; margin-top:20px; }
-#pedidoAtivo { display:none; }
-input#codigoConfirm { width:100%; padding:10px; margin-top:10px; border-radius:6px; border:1px solid #ccc; }
+input#codigoConfirm { width:100%; padding:10px; margin-top:8px; border-radius:6px; border:1px solid #ccc; font-size:16px; }
+.footer { text-align:center; font-size:14px; color:#555; margin:15px 0; }
 </style>
 </head>
 <body>
@@ -34,58 +40,65 @@ input#codigoConfirm { width:100%; padding:10px; margin-top:10px; border-radius:6
 </header>
 
 <div class="container">
-
-  <div id="pendentesSection">
-    <div class="section-title">Pedidos Pendentes</div>
-    <div id="pendentes"></div>
+  <div class="tabs">
+    <button class="tab-btn active" onclick="abrirTab('pendentes')">Pedidos Pendentes</button>
+    <button class="tab-btn" onclick="abrirTab('mapa')">Mapa / Pedido Atual</button>
   </div>
 
-  <div id="pedidoAtivo">
-    <div class="section-title">Pedido em andamento</div>
-    <div class="card" id="cardAtivo"></div>
-    <input type="text" id="codigoConfirm" placeholder="Digite o código para encerrar">
-    <div class="buttons">
+  <!-- Pedidos Pendentes -->
+  <div id="pendentes" class="section active"></div>
+
+  <!-- Mapa e Pedido Ativo -->
+  <div id="mapa" class="section">
+    <div id="map"></div>
+    <div id="pedidoAtivo" style="display:none;">
+      <div class="card" id="cardAtivo"></div>
+      <input type="text" id="codigoConfirm" placeholder="Digite o código para encerrar">
       <button class="cheguei" onclick="cheguei()">Cheguei</button>
       <button class="complete" onclick="encerrar()">Encerrar</button>
     </div>
   </div>
-
 </div>
 
 <footer class="footer">Master Express - Entregas em Macaé</footer>
 
+<!-- Leaflet JS -->
+<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+
 <script>
-// Simulação de pedidos (pode ser um JSON público futuramente)
+// Simulação de pedidos
 let pedidos = [
-  {id:1,nomeRemetente:"Loja A",telRemetente:"22999999999",endRemetente:"Rua 1",endEntrega:"Rua 2",valor:12.5,urgente:"Não",aceito:false,codigo:"1234"},
-  {id:2,nomeRemetente:"Loja B",telRemetente:"22988888888",endRemetente:"Rua 3",endEntrega:"Rua 4",valor:15.0,urgente:"Sim",aceito:false,codigo:"5678"}
+  {id:1,nomeRemetente:"Loja A",telRemetente:"22999999999",endRemetente:"Rua 1, Macaé",endEntrega:"Rua 2, Macaé",valor:12.5,urgente:"Não",aceito:false,codigo:"1234",lat:null,lon:null},
+  {id:2,nomeRemetente:"Loja B",telRemetente:"22988888888",endRemetente:"Rua 3, Macaé",endEntrega:"Rua 4, Macaé",valor:15.0,urgente:"Sim",aceito:false,codigo:"5678",lat:null,lon:null}
 ];
 
 let pedidoAtual = null;
 let pedidosNotificados = [];
 
+// Mapa
+let map = L.map('map').setView([-22.3707,-41.7809], 13); // Coordenadas de Macaé
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  attribution:'&copy; OpenStreetMap contributors'
+}).addTo(map);
+
+let marcadorColeta = null;
+let marcadorEntrega = null;
+
 // Renderiza pedidos pendentes
 function renderizarPendentes(){
   const pend = document.getElementById('pendentes');
-  pend.innerHTML = '';
-  if(pedidoAtual) {
-    document.getElementById('pendentesSection').style.display='none';
-    document.getElementById('pedidoAtivo').style.display='block';
-    return;
-  }
-  document.getElementById('pendentesSection').style.display='block';
-  document.getElementById('pedidoAtivo').style.display='none';
-
+  pend.innerHTML='';
+  if(pedidoAtual) return;
   pedidos.filter(p=>!p.aceito).forEach(p=>{
     const div = document.createElement('div');
     div.className='card';
     div.innerHTML = `
-      <div class="info"><strong>Remetente:</strong> ${p.nomeRemetente}</div>
+      <div class="info"><strong>Remetente:</strong> ${p.nomeRemetente} - ${p.telRemetente}</div>
       <div class="info"><strong>Coleta:</strong> ${p.endRemetente}</div>
       <div class="info"><strong>Entrega:</strong> ${p.endEntrega}</div>
       <div class="info"><strong>Valor:</strong> R$ ${p.valor}</div>
       <div class="info"><strong>Urgente:</strong> ${p.urgente}</div>
-      <div class="buttons"><button class="accept" onclick="aceitar(${p.id})">Aceitar</button></div>
+      <button class="accept" onclick="aceitar(${p.id})">Aceitar</button>
     `;
     pend.appendChild(div);
   });
@@ -95,13 +108,45 @@ function renderizarPendentes(){
 function aceitar(id){
   pedidoAtual = pedidos.find(p=>p.id===id);
   pedidoAtual.aceito=true;
-  renderizarAtivo();
+  atualizarMapa();
+  abrirTab('mapa');
   renderizarPendentes();
+  document.getElementById('pedidoAtivo').style.display='block';
   alert('Pedido aceito! Dirija-se ao local de coleta.');
 }
 
-// Renderiza pedido ativo
-function renderizarAtivo(){
+// Atualiza mapa com marcadores
+function atualizarMapa(){
+  if(!pedidoAtual) return;
+  // Remove marcadores antigos
+  if(marcadorColeta) map.removeLayer(marcadorColeta);
+  if(marcadorEntrega) map.removeLayer(marcadorEntrega);
+
+  // Geocode simples via OpenStreetMap Nominatim
+  fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(pedidoAtual.endRemetente)}`)
+    .then(res=>res.json())
+    .then(data=>{
+      if(data[0]){
+        pedidoAtual.lat=data[0].lat;
+        pedidoAtual.lon=data[0].lon;
+        marcadorColeta=L.marker([data[0].lat,data[0].lon]).addTo(map).bindPopup('Coleta: '+pedidoAtual.endRemetente).openPopup();
+        map.setView([data[0].lat,data[0].lon],15);
+      }
+    });
+
+  fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(pedidoAtual.endEntrega)}`)
+    .then(res=>res.json())
+    .then(data=>{
+      if(data[0]){
+        marcadorEntrega=L.marker([data[0].lat,data[0].lon]).addTo(map).bindPopup('Entrega: '+pedidoAtual.endEntrega);
+      }
+    });
+
+  renderizarPedidoAtivo();
+}
+
+// Renderiza pedido ativo abaixo do mapa
+function renderizarPedidoAtivo(){
   if(!pedidoAtual) return;
   const card = document.getElementById('cardAtivo');
   card.innerHTML = `
@@ -119,31 +164,34 @@ function cheguei(){
   alert('Você chegou ao local de entrega.');
 }
 
-// Encerrar pedido
+// Encerrar
 function encerrar(){
   const codigoInput = document.getElementById('codigoConfirm').value.trim();
-  if(!codigoInput){
-    alert('Digite o código para encerrar a entrega.');
-    return;
-  }
-  if(codigoInput !== pedidoAtual.codigo){
+  if(codigoInput!==pedidoAtual.codigo){
     alert('Código incorreto! Confirme com o cliente.');
     return;
   }
   pedidoAtual=null;
   document.getElementById('codigoConfirm').value='';
+  document.getElementById('pedidoAtivo').style.display='none';
   renderizarPendentes();
   alert('Entrega concluída! Você pode pegar o próximo pedido.');
 }
 
-// Simulação de notificação de novo pedido
+// Abas
+function abrirTab(tab){
+  document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
+  document.getElementById(tab).classList.add('active');
+  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+  document.querySelector(`.tab-btn[onclick="abrirTab('${tab}')"]`).classList.add('active');
+}
+
+// Notificação de novos pedidos
 function verificarNovosPedidos(){
   pedidos.forEach(p=>{
     if(!pedidosNotificados.includes(p.id) && !p.aceito){
       pedidosNotificados.push(p.id);
-      // alerta visual
       alert('Novo pedido disponível!');
-      // alerta sonoro
       const audio = new Audio('https://actions.google.com/sounds/v1/alarms/beep_short.ogg');
       audio.play();
     }
